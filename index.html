@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500&amp;display=swap" rel="stylesheet">
+    <title>รายงานคุณภาพอากาศ</title>
+    <style>
+        body {
+            font-family: 'Bai Jamjuree', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 450px;
+            margin: 20px auto;
+            text-align: center;
+        }
+        header .row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 0;
+        }
+        .btn-health-check {
+            display: block;
+            width: 100%;
+            margin: 20px auto;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+        .btn-health-check:hover {
+            background-color: #0056b3;
+        }
+        #pm-widget {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #pm-aqi {
+            font-size: 4rem;
+        }
+        .col {
+            text-align: center;
+        }
+        #date-time {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container border rounded shadow">
+        <header>
+            <div class="row py-3">
+                <div class="col text-center">
+                    <h3 class="fs-4">รายงานคุณภาพอากาศ</h3>
+                </div>
+            </div>
+        </header>
+        <section>
+            <div class="row rounded-top rounded-4 p-3" id="pm-widget" style="background-color: rgb(0, 166, 81);">
+                <div class="col">
+                    <h2 id="pm-aqi" class="fw-semibold text-white">50</h2>
+                    <h3 class="fs-5 text-white">AQI</h3>
+                </div>
+                <div class="col">
+                    <p id="pm-text" class="text-white">คุณภาพอากาศดี</p>
+                    <span class="badge text-bg-light fs-6" id="pm-level">PM 2.5 | 25 µg/m³</span>
+                </div>
+            </div>
+        </section>
+        <!-- แสดงวันที่และเวลา -->
+        <div id="date-time"></div>
+
+        <!-- เพิ่ม Iframe -->
+        <iframe src="https://www.cmuccdc.org/assets/php/getDatabaseColumnChart2.php?reportType=h&amp;dataType=pm25&amp;source=5030&amp;key=c571d7dda0b45310bd33a754b87fbc89" marginheight="0" marginwidth="0" scrolling="no" width="100%" height="250" frameborder="0"></iframe>
+        <iframe src="https://www.cmuccdc.org/assets/php/getDatabaseColumnChart.php?reportType=d&amp;dataType=pm25&amp;source=5030&amp;key=c571d7dda0b45310bd33a754b87fbc89" marginheight="0" marginwidth="0" scrolling="no" width="100%" height="250" frameborder="0"></iframe>
+
+        <!-- ปุ่มรายการตรวจสุขภาพ -->
+        <button class="btn-health-check" onclick="window.location.href='https://xanderkiss.github.io/TON-Num/'">รายการตรวจสุขภาพ</button>
+    </div>
+    
+    <script>
+        // ฟังก์ชั่นสำหรับแสดงวันที่และเวลาปัจจุบัน
+        function updateDateTime() {
+            const now = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const formattedDate = now.toLocaleString('th-TH', options);
+            document.getElementById('date-time').textContent = formattedDate;
+        }
+
+        // อัปเดตเวลาทุกวินาที
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+
+        const aqiUrl = 'https://www.cmuccdc.org/api/ccdc/value/5030';
+        const apiaqiKey = 'b059a926-63b8-4527-8ef6-17af89a3399a';
+        const aqicity = 'Mae Sot';
+
+        fetch(aqiUrl)
+            .then(response => response.json())
+            .then(data => {
+                const pm25 = data.pm25;
+                const aqi = calculateAQI(data.pm25);
+                const rgb = data.th_color.split(",");
+                document.getElementById("pm-level").textContent = `PM 2.5 | ${pm25} µg/m³`;
+                document.getElementById("pm-aqi").textContent = `${aqi}`;
+                document.getElementById("pm-text").textContent = `${data.th_title}`;
+                document.getElementById("pm-widget").style.backgroundColor = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+            })
+            .catch(error => console.error(error));
+
+        function calculateAQI(Ci) {
+            let ranges = [
+                { min: 0, max: 15, aqiMin: 0, aqiMax: 25 },
+                { min: 15.1, max: 25, aqiMin: 26, aqiMax: 50 },
+                { min: 25.1, max: 37.5, aqiMin: 51, aqiMax: 100 },
+                { min: 37.6, max: 75, aqiMin: 101, aqiMax: 200 },
+                { min: 75.1, max: 500, aqiMin: 201, aqiMax: 500 }
+            ];
+            let range = ranges.find(r => Ci >= r.min && Ci <= r.max);
+            return Math.round(((range.aqiMax - range.aqiMin) / (range.max - range.min)) * (Ci - range.min) + range.aqiMin);
+        }
+    </script>
+</body>
+</html>
